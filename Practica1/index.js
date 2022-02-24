@@ -1,3 +1,4 @@
+
 const app = require('express')();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
@@ -8,9 +9,15 @@ app.get('/', (req, res) => {
 });
 
 io.on('connection', (socket) => {
-  socket.on('chat message', msg => {
-    io.emit('chat message', msg);
+  socket.on('chat message', (msg, color) => {
+    io.emit('chat message', msg, color);
   });
+  socket.on('writing message', msg => {
+    io.emit('writing message', msg);
+  })
+  socket.on('send image', (file, user) => {
+    io.emit('send image', file, user);
+  })
 });
 
 http.listen(port, () => {
