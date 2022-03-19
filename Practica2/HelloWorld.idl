@@ -1,0 +1,6 @@
+module HelloApp {
+    interface IHelloWorld {
+        string HelloWorld();
+        oneway void shutdown();
+    };
+};
