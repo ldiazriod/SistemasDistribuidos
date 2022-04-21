@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+      #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+      #input:focus { outline: none; }
+      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+      #form > button:hover { background: grey; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+      #form > button:active { background: green; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+      #selectEmoji {background-color: transparent; border: none;}
+      #selectColor {background-color: transparent; border: none;}
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages > li { padding: 0.5rem 1rem; }
+      #messages > li:nth-child(odd) { background: #efefef; }
+      #inputImg {	width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1}
+      #inputImg + label { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+      #inputImg + label:hover { background-color: gray;}
+      #inputImgProfile {	width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1}
+      #inputImgProfile + label { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+      #inputImgProfile + label:hover { background-color: gray;}
+      #username {border: none; border-radius: 1rem; outline: none;}
+      #username:focus { outline: none;}
+
+    </style>
+  </head>
+  <body>
+    <div id="write"></div>
+    <ul id="messages"></ul>
+    <form id="form" action="">
+      <select id="selectColor">
+        <option value="black" style="color:black">Black</option>
+        <option value="red" style="color: red;">Red</option>
+        <option value="green" style="color: green;">Green</option>
+        <option value="purple" style="color: purple;">Purple</option>
+      </select>
+      <input type="file" id="inputImgProfile" accept="image/*">
+      <label for="inputImgProfile">Profile Image</label>
+      <input type="text" id="username" autocomplete="off" placeholder="Escriba su usuario">
+      <input type="text" id="input" autocomplete="off" placeholder="Escriba un mensaje"/>
+      <select id="selectEmoji" onchange="addEmoji(value)" size="0"></select>
+      <input type="file" id="inputImg" accept="image/*">
+      <label for="inputImg">Select Image</label>
+      <button>Send</button>
+      <button id="closeSocketButton">Close</button>
+    </form>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      
+      const socket = io();
+
+      const textColor = document.getElementById("selectColor")
+      const write = document.getElementById("write")                      //Writing
+      const messages = document.getElementById('messages');               //Message list
+      const form = document.getElementById('form');                       //Input user elements form 
+      const inputUsername = document.getElementById('username');          //Input for username
+      const input = document.getElementById('input');                     //message input
+      const selectEmoji = document.getElementById("selectEmoji");         //Emoji selector
+      const inputImg = document.getElementById("inputImg")                //input file for images
+      const closeSocket = document.getElementById("closeSocketButton");   //Close socket botton
+      const profileImg = document.getElementById("inputImgProfile");      
+
+      const addEmoji = (value) => {
+        input.value += String.fromCodePoint(value);
+      }
+
+      let emojiValue = 128512;
+      while(emojiValue <= 128580){
+        const newOption = document.createElement("option");
+        newOption.textContent = String.fromCodePoint(emojiValue);
+        newOption.value = emojiValue;
+        selectEmoji.appendChild(newOption);
+        emojiValue++;
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const userName = inputUsername.value ? inputUsername.value : "Anonimo";
+        const img = profileImg.files[0] ? profileImg.files[0] : "/defaultImg"
+        if (input.value) {
+          socket.emit('chat message',img, `${userName}: ${input.value}`, `${textColor.value}`);
+          input.value = '';
+        }else if(inputImg.files !== 0){
+          socket.emit('send image', inputImg.files[0], userName);
+        }
+      });
+
+      closeSocket.addEventListener('click', (e) => {
+        e.preventDefault();
+        socket.disconnect();
+      })
+
+      input.addEventListener('input', (e) => {
+        if(inputUsername.value){
+          socket.emit('writing message', inputUsername.value);
+        }
+      })
+
+      socket.on('writing message', (msg) => {
+        write.innerText = `${msg}: escribiendo`
+        setTimeout(() => {
+          write.innerText = "";
+        }, 3000)
+      })
+
+      socket.on('send image', (file, user) => {
+        if(file){
+          const item = document.createElement("li");
+          const div = document.createElement("div")
+          const newImg = document.createElement("img")
+          const newFileImage = new File([file], file)
+          newImg.src = URL.createObjectURL(newFileImage)
+          newImg.height = 300
+          newImg.width = 300
+          div.textContent = `${user}: `;
+          div.style.color = `${textColor.value}`
+          item.appendChild(div)
+          item.appendChild(newImg)
+          messages.appendChild(item);
+          inputImg.value = ''
+        }
+      })
+
+      socket.on('chat message', (img, msg, color) => {
+        const urlRegex = new RegExp(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g)
+        const item = document.createElement('li');
+        const imgContainer = document.createElement("img");
+        if(typeof img === "string"){
+          imgContainer.src = img;
+        }else{
+          const imgFile = new File([img], img);
+          imgContainer.src = URL.createObjectURL(imgFile);
+        }
+        imgContainer.height = 25;
+        imgContainer.width = 25;
+        item.appendChild(imgContainer);
+        if(urlRegex.test(msg)){
+          const urlItem = document.createElement("a");
+          urlItem.href = msg.split(": ")[1];
+          urlItem.textContent = msg;
+          urlItem.target = "_blank";
+          item.appendChild(urlItem);
+        }else{
+          const spanMsg = document.createElement("span");
+          spanMsg.textContent = msg;
+          spanMsg.style.color = color;
+          item.appendChild(spanMsg);
+        }
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+
+    </script>
+  </body>
+</html>
