@@ -37,6 +37,3 @@ def get_transactions_data
 		end
 	end
 end
-
-#009b2267cc8051cc2f4a1e4e5ae00d8b315c0f12aa2188bd9cc9f0433b076e8a
-#009b2267cc8051cc2f4a1e4e5ae00d8b315c0f12aa2188bd9cc9f0433b076e8a

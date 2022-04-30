@@ -51,6 +51,10 @@ class Block #Blockchain class
   end
 
   def self.next( pre_previous, previous, transactions )
-    Block.new( pre_previous.index+2, transactions, pre_previous.hash, previous.hash)
+    if previous.index == 0
+      Block.new( pre_previous.index+1, transactions, pre_previous.hash, previous.hash)
+    else
+      Block.new( pre_previous.index+2, transactions, pre_previous.hash, previous.hash)
+    end
   end
 end  # class Block
